@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "Zelda1RandomizerTracker/1.0.0": {
+        "runtime": {
+          "Zelda1RandomizerTracker.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Zelda1RandomizerTracker/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
