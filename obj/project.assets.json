@@ -13,9 +13,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\#Code\\HyruleProgress\\Zelda1RandomizerTracker.csproj",
-      "projectName": "Zelda1RandomizerTracker",
-      "projectPath": "C:\\#Code\\HyruleProgress\\Zelda1RandomizerTracker.csproj",
+      "projectUniqueName": "C:\\#Code\\HyruleProgress\\HyruleProgress.csproj",
+      "projectName": "HyruleProgress",
+      "projectPath": "C:\\#Code\\HyruleProgress\\HyruleProgress.csproj",
       "packagesPath": "C:\\Users\\Utilisateur\\.nuget\\packages\\",
       "outputPath": "C:\\#Code\\HyruleProgress\\obj\\",
       "projectStyle": "PackageReference",

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "HyruleProgress": {
+      "commandName": "Project",
+      "jsWebView2Debugging": false
+    }
+  }
+}

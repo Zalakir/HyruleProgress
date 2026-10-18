@@ -3,7 +3,7 @@
 
 local outputPath =
     os.getenv("LOCALAPPDATA")
-    .. "\\Zelda1RandomizerTracker\\bridge.json"
+    .. "\\HyruleProgress\\bridge.json"
 
 local frameCounter = 0
 

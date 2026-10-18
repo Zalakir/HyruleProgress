@@ -1,0 +1,17 @@
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\Resources\icon\HyruleProgress.ico
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\version.txt
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\HyruleProgress.exe
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\HyruleProgress.deps.json
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\HyruleProgress.runtimeconfig.json
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\HyruleProgress.dll
+C:\#Code\HyruleProgress\bin\Release\net8.0-windows\HyruleProgress.pdb
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.GeneratedMSBuildEditorConfig.editorconfig
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.AssemblyInfoInputs.cache
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.AssemblyInfo.cs
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.csproj.CoreCompileInputs.cache
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.sourcelink.json
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.dll
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\refint\HyruleProgress.dll
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.pdb
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\HyruleProgress.genruntimeconfig.cache
+C:\#Code\HyruleProgress\obj\Release\net8.0-windows\ref\HyruleProgress.dll
