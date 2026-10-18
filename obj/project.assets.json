@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\#Code\\ProjectTetra\\Zelda1RandomizerTracker.csproj",
+      "projectUniqueName": "C:\\#Code\\HyruleProgress\\Zelda1RandomizerTracker.csproj",
       "projectName": "Zelda1RandomizerTracker",
-      "projectPath": "C:\\#Code\\ProjectTetra\\Zelda1RandomizerTracker.csproj",
+      "projectPath": "C:\\#Code\\HyruleProgress\\Zelda1RandomizerTracker.csproj",
       "packagesPath": "C:\\Users\\Utilisateur\\.nuget\\packages\\",
-      "outputPath": "C:\\#Code\\ProjectTetra\\obj\\",
+      "outputPath": "C:\\#Code\\HyruleProgress\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Utilisateur\\AppData\\Roaming\\NuGet\\NuGet.Config",

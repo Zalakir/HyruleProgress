@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Zelda1RandomizerTracker")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f64cf6ca3527b699b679c9aa878c120a8d2d151b")]
 [assembly: System.Reflection.AssemblyProductAttribute("Zelda1RandomizerTracker")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Zelda1RandomizerTracker")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
