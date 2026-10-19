@@ -46,6 +46,13 @@ public sealed class TrackerState
         RunStartedAtUtc = null;
     }
 
+    public string GetElapsedText(DateTime utcNow)
+    {
+        var elapsed = TimeSpan.FromTicks(GetElapsedTicks(utcNow));
+        return FormattableString.Invariant(
+            $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}.{elapsed.Milliseconds:000}");
+    }
+
     public static TrackerState CreateDefault()
     {
         var s = new TrackerState { RunTimerInitialized = true };
@@ -99,8 +106,8 @@ public sealed class TrackerForm : Form
         "HyruleProgress", "save.json");
     private TrackerState state;
     private InventoryView inventory = null!;
-    private readonly System.Windows.Forms.Timer runTimer = new() { Interval = 1000 };
-    private Label timerDisplay = null!;
+    private readonly System.Windows.Forms.Timer runTimer = new() { Interval = 33 };
+    private RunTimerDisplay timerDisplay = null!;
     private Button timerToggle = null!;
     private readonly System.Windows.Forms.Timer bridgeTimer = new() { Interval = 500 };
     private Label bridgeStatus = null!;
@@ -190,7 +197,7 @@ public sealed class TrackerForm : Form
         var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1, BackColor = Color.Black, Margin = Padding.Empty };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         var title = new Label { Text = "HYRULE PROGRESS", Font = new Font("Consolas", 20, FontStyle.Bold), ForeColor = Color.White, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
@@ -201,11 +208,11 @@ public sealed class TrackerForm : Form
             TextAlign = ContentAlignment.MiddleCenter
         };
         header.Controls.Add(bridgeStatus, 1, 0);
-        timerDisplay = new Label
+        timerDisplay = new RunTimerDisplay
         {
-            Text = "RUN 00:00:00", Font = new Font("Consolas", 17, FontStyle.Bold),
+            Font = new Font("Consolas", 17, FontStyle.Bold),
             ForeColor = Color.FromArgb(232, 184, 0), Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter, AccessibleName = "Run timer"
+            AccessibleName = "Run timer"
         };
         header.Controls.Add(timerDisplay, 2, 0);
         timerToggle = new Button { Width = 82, Height = 30, Dock = DockStyle.Fill, Margin = new Padding(3, 7, 3, 7) };
@@ -255,10 +262,53 @@ public sealed class TrackerForm : Form
 
     private void UpdateTimerDisplay()
     {
-        var elapsed = TimeSpan.FromTicks(state.GetElapsedTicks(DateTime.UtcNow));
-        timerDisplay.Text = $"RUN {(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
-        timerToggle.Text = state.RunStartedAtUtc.HasValue ? "Stop" : "Start";
-        timerToggle.AccessibleName = state.RunStartedAtUtc.HasValue ? "Stop run timer" : "Start run timer";
+        timerDisplay.DisplayText = $"RUN {state.GetElapsedText(DateTime.UtcNow)}";
+        string toggleText = state.RunStartedAtUtc.HasValue ? "Stop" : "Start";
+        if (timerToggle.Text != toggleText)
+        {
+            timerToggle.Text = toggleText;
+            timerToggle.AccessibleName = $"{toggleText} run timer";
+        }
+    }
+
+    internal sealed class RunTimerDisplay : Control
+    {
+        private string displayText = "RUN 00:00:00.000";
+
+        public string DisplayText
+        {
+            get => displayText;
+            set
+            {
+                if (displayText == value) return;
+                displayText = value;
+                Invalidate();
+            }
+        }
+
+        public RunTimerDisplay()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint
+                | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Color.Black;
+            AccessibleRole = AccessibleRole.StaticText;
+            TabStop = false;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            TextRenderer.DrawText(e.Graphics, displayText, Font, ClientRectangle, ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
+                | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+        }
+
+        protected override AccessibleObject CreateAccessibilityInstance() => new TimerAccessibleObject(this);
+
+        private sealed class TimerAccessibleObject(RunTimerDisplay owner) : ControlAccessibleObject(owner)
+        {
+            public override string? Value => owner.DisplayText;
+        }
     }
 
     private void ToggleRunTimer()

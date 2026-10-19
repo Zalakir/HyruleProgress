@@ -6,7 +6,7 @@ A lightweight Windows desktop tracker prototype for Zelda 1 Randomizer.
 - Zelda-style inventory with a black background, green/gold frames, and pixel-art sprites from `Resources/ItemImage`
 - 5-by-3 item grid, separate hearts/Bomb Bags strip, nine-column dungeon panel, and equipment panel
 - Clickable item/equipment icons and independent dungeon maps, compasses, and completion indicators
-- Run stopwatch in the header with automatic Mesen start/finish detection and manual start/stop controls; elapsed time is saved across app restarts and resets with a new run
+- Run stopwatch in the header displayed as `HH:MM:SS.fff` (three millisecond digits), with automatic Mesen start/finish detection and manual start/stop controls; elapsed time is saved across app restarts and resets with a new run. The double-buffered display refreshes approximately every 33 ms without relaying out the header; automatic detection is still limited by bridge polling.
 - Automatic tracking from the Mesen 2 emulator through `Integration.lua`
 - Inventory-only interface with the title/header and new-run reset button
 - Automatic local JSON save

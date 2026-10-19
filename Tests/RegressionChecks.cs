@@ -167,6 +167,41 @@ internal static class RegressionChecks
 
     private static void CheckTimer()
     {
+        using (var header = new TableLayoutPanel { Size = new Size(300, 50), ColumnCount = 1, RowCount = 1 })
+        using (var display = new TrackerForm.RunTimerDisplay { Dock = DockStyle.Fill })
+        {
+            header.Controls.Add(display);
+            header.CreateControl();
+            display.CreateControl();
+            header.PerformLayout();
+            int layouts = 0;
+            int invalidations = 0;
+            header.Layout += (_, _) => layouts++;
+            display.Invalidated += (_, _) => invalidations++;
+            for (int i = 0; i < 100; i++)
+                display.DisplayText = $"RUN 00:00:00.{i:000}";
+            Check(layouts == 0, "Timer updates triggered header layout");
+            Check(invalidations == 99, "Timer did not repaint only when changed");
+            Check(display.AccessibilityObject.Value == "RUN 00:00:00.099", "Timer accessibility value");
+            Check((bool)typeof(Control).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(display)!, "Timer is not double-buffered");
+            using var bitmap = new Bitmap(display.Width, display.Height);
+            display.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+        }
+        foreach (var (ticks, expected) in new (long, string)[]
+        {
+            (0, "00:00:00.000"),
+            (TimeSpan.TicksPerMillisecond, "00:00:00.001"),
+            (TimeSpan.TicksPerMillisecond * 12, "00:00:00.012"),
+            (TimeSpan.TicksPerMillisecond * 999 + 9999, "00:00:00.999"),
+            (TimeSpan.TicksPerSecond, "00:00:01.000"),
+            (TimeSpan.FromHours(25).Ticks + TimeSpan.FromMilliseconds(123).Ticks, "25:00:00.123")
+        })
+            Check(new TrackerState { RunElapsedTicks = ticks }.GetElapsedText(Now) == expected, "Three-decimal timer format");
+        var fractional = new TrackerState { RunStartedAtUtc = Now };
+        Check(fractional.GetElapsedText(Now.AddMilliseconds(123)) == "00:00:00.123", "Running milliseconds");
+        fractional.StopRunTimer(Now.AddMilliseconds(456));
+        Check(fractional.GetElapsedText(Now.AddSeconds(2)) == "00:00:00.456", "Stopped milliseconds");
         var state = TrackerState.CreateDefault();
         var ram = Play();
         ram[0x11] = 0;
