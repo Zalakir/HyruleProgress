@@ -20,6 +20,7 @@ internal static class MesenBridge
     private const int Paused = 0x00E0;
     private const int MenuState = 0x00E1;
     private const int FirstObjectType = 0x0350;
+    private const int TriforceFanfareActive = 0x0509;
     private const int Sword = 0x0657;
     private const int Arrows = 0x0659;
     private const int Bow = 0x065A;
@@ -41,6 +42,7 @@ internal static class MesenBridge
     private const int Level9Map = 0x066A;
     private const int HeartContainers = 0x066F;
     private const int Triforce = 0x0671;
+    private const int LastBossDefeated = 0x0672;
     private const int Boomerang = 0x0674;
     private const int MagicalBoomerang = 0x0675;
     private const int MagicalShield = 0x0676;
@@ -200,8 +202,11 @@ internal static class MesenBridge
             int bit = 1 << (level - 1);
             bool map = level == 9 ? ram[Level9Map] != 0 : (ram[Maps] & bit) != 0;
             bool compass = level == 9 ? ram[Level9Compass] != 0 : (ram[Compasses] & bit) != 0;
-            // Level 9 has no Triforce piece, so its completion stays manual.
-            bool triforce = level <= 8 && (ram[Triforce] & bit) != 0;
+            // The Ganon flag is set after the pickup fanfare, not at the boss's death.
+            bool triforce = level == 9
+                ? ram[LastBossDefeated] != 0
+                    || (ram[CurrentLevel] == 9 && ram[TriforceFanfareActive] != 0)
+                : (ram[Triforce] & bit) != 0;
             if (map && !location.HasMap) { location.HasMap = true; changed = true; }
             if (compass && !location.HasCompass) { location.HasCompass = true; changed = true; }
             if (triforce && !location.Checked) { location.Checked = true; changed = true; }

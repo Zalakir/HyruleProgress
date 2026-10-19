@@ -138,6 +138,31 @@ internal static class RegressionChecks
             live[0x65E] = potion;
             Check(MesenBridge.Apply(current, live) && (int)current.CurrentPotion == potion, "Potion lifecycle");
         }
+        var ganon = TrackerState.CreateDefault();
+        var level9 = ganon.Locations.Single(x => x.Name == "Level 9");
+        var pickup = Play();
+        pickup[0x10] = 9;
+        pickup[0x671] = 0xFF;
+        MesenBridge.Apply(ganon, pickup);
+        Check(!level9.Checked, "Eight Triforce pieces incorrectly completed Level 9");
+        Check(!MesenBridge.Apply(ganon, pickup) && !level9.Checked, "Ganon room before pickup completed Level 9");
+        pickup[0x509] = 1;
+        pickup[0x10] = 8;
+        Check(!MesenBridge.Apply(ganon, pickup) && !level9.Checked, "Fanfare outside Level 9 completed it");
+        pickup[0x10] = 9;
+        pickup[0x12] = 1;
+        Check(!MesenBridge.Apply(ganon, pickup) && !level9.Checked, "Menu snapshot completed Level 9");
+        pickup[0x12] = 5;
+        Check(MesenBridge.Apply(ganon, pickup) && level9.Checked, "Ganon Triforce pickup not detected");
+        Check(!MesenBridge.Apply(ganon, pickup), "Repeated pickup caused extra updates");
+        pickup[0x509] = 0;
+        Check(!MesenBridge.Apply(ganon, pickup) && level9.Checked, "Ending fanfare cleared Level 9");
+        var lateConnection = TrackerState.CreateDefault();
+        pickup[0x672] = 1;
+        Check(MesenBridge.Apply(lateConnection, pickup)
+            && lateConnection.Locations.Single(x => x.Name == "Level 9").Checked, "Post-fanfare pickup not detected");
+        var savedGanon = JsonSerializer.Deserialize<TrackerState>(JsonSerializer.Serialize(ganon))!;
+        Check(savedGanon.Locations.Single(x => x.Name == "Level 9").Checked, "Level 9 completion not saved");
     }
 
     private static void CheckTimer()
@@ -189,6 +214,13 @@ internal static class RegressionChecks
         var state = TrackerState.CreateDefault();
         using var view = new InventoryView(state) { Size = new Size(1060, 690) };
         var tiles = Tiles(view).ToArray();
+        var sprites = (Dictionary<string, Image>)typeof(InventoryView)
+            .GetField("sprites", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(view)!;
+        var imageField = typeof(ItemTile).GetField("image", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Check(ReferenceEquals(imageField.GetValue(tiles.Single(x => x.AccessibleName == "Level 9 Complete")),
+            sprites["Triforcelv9"]), "Level 9 Triforce icon");
+        Check(tiles.Where(x => x.AccessibleName!.EndsWith(" Complete") && x.AccessibleName != "Level 9 Complete")
+            .All(x => ReferenceEquals(imageField.GetValue(x), sprites["Triforce"])), "Other Triforce icons changed");
         var hearts = tiles.Where(x => x.AccessibleName!.StartsWith("Heart")).ToArray();
         var bags = tiles.Where(x => x.AccessibleName!.StartsWith("Bomb Bag")).ToArray();
         Check(hearts.Length == 13 && bags.Length == 2, "Slot counts");

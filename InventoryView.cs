@@ -194,7 +194,10 @@ internal sealed class InventoryView : UserControl
     private void AddDungeonTile(TableLayoutPanel grid, int level, DungeonProgress progress)
     {
         TrackLocation? Find() => state.Locations.FirstOrDefault(x => x.Name == $"Level {level}" && x.Type.Equals("Dungeon", StringComparison.OrdinalIgnoreCase));
-        AddTile(grid, $"Level {level} {progress}", progress == DungeonProgress.Complete ? "Triforce" : progress.ToString(),
+        string sprite = progress == DungeonProgress.Complete
+            ? (level == 9 ? "Triforcelv9" : "Triforce")
+            : progress.ToString();
+        AddTile(grid, $"Level {level} {progress}", sprite,
             () =>
             {
                 var location = Find();
