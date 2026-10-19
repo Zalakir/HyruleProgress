@@ -80,6 +80,8 @@ public sealed class TrackerForm : Form
     private readonly System.Windows.Forms.Timer runTimer = new() { Interval = 1000 };
     private Label timerDisplay = null!;
     private Button timerToggle = null!;
+    private readonly System.Windows.Forms.Timer bridgeTimer = new() { Interval = 500 };
+    private Label bridgeStatus = null!;
 
     public TrackerForm()
     {
@@ -116,8 +118,10 @@ public sealed class TrackerForm : Form
         BuildUi();
         runTimer.Tick += (_, _) => UpdateTimerDisplay();
         runTimer.Start();
+        bridgeTimer.Tick += (_, _) => PollBridge();
+        bridgeTimer.Start();
         FormClosing += (_, _) => SaveState();
-        Disposed += (_, _) => runTimer.Dispose();
+        Disposed += (_, _) => { runTimer.Dispose(); bridgeTimer.Dispose(); };
         if (versionWarning != null)
             Shown += (_, _) => MessageBox.Show(this, versionWarning, "App version", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
@@ -161,40 +165,66 @@ public sealed class TrackerForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, BackColor = Color.Black, Margin = Padding.Empty };
+        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1, BackColor = Color.Black, Margin = Padding.Empty };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
         var title = new Label { Text = "HYRULE PROGRESS", Font = new Font("Consolas", 20, FontStyle.Bold), ForeColor = Color.White, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-        header.Controls.Add(title);
+        header.Controls.Add(title, 0, 0);
+        bridgeStatus = new Label
+        {
+            Font = new Font("Consolas", 11, FontStyle.Bold), Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+        header.Controls.Add(bridgeStatus, 1, 0);
         timerDisplay = new Label
         {
             Text = "RUN 00:00:00", Font = new Font("Consolas", 17, FontStyle.Bold),
             ForeColor = Color.FromArgb(232, 184, 0), Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter, AccessibleName = "Run timer"
         };
-        header.Controls.Add(timerDisplay, 1, 0);
+        header.Controls.Add(timerDisplay, 2, 0);
         timerToggle = new Button { Width = 82, Height = 30, Dock = DockStyle.Fill, Margin = new Padding(3, 7, 3, 7) };
         timerToggle.FlatStyle = FlatStyle.Flat;
         timerToggle.BackColor = Color.FromArgb(24, 24, 24);
         timerToggle.ForeColor = Color.White;
         timerToggle.FlatAppearance.BorderColor = Color.FromArgb(112, 112, 112);
         timerToggle.Click += (_, _) => ToggleRunTimer();
-        header.Controls.Add(timerToggle, 2, 0);
+        header.Controls.Add(timerToggle, 3, 0);
         var reset = new Button { Text = "New run / reset", Width = 140, Height = 30, Dock = DockStyle.Right };
         reset.FlatStyle = FlatStyle.Flat;
         reset.BackColor = Color.FromArgb(24, 24, 24);
         reset.ForeColor = Color.White;
         reset.FlatAppearance.BorderColor = Color.FromArgb(112, 112, 112);
         reset.Click += (_, _) => ResetRun();
-        header.Controls.Add(reset, 3, 0);
+        header.Controls.Add(reset, 4, 0);
         root.Controls.Add(header, 0, 0);
 
         inventory = new InventoryView(state);
         inventory.ProgressChanged += (_, _) => SaveState();
         root.Controls.Add(inventory, 0, 1);
         UpdateTimerDisplay();
+        SetBridgeStatus(false);
+    }
+
+    private void PollBridge()
+    {
+        var ram = MesenBridge.TryReadRam();
+        SetBridgeStatus(ram != null);
+        if (ram != null && MesenBridge.Apply(state, ram))
+        {
+            inventory.RefreshProgress();
+            SaveState();
+        }
+    }
+
+    private void SetBridgeStatus(bool connected)
+    {
+        bridgeStatus.Text = connected ? "● AUTO" : "○ AUTO";
+        bridgeStatus.ForeColor = connected ? Color.LimeGreen : Color.DimGray;
+        bridgeStatus.AccessibleName = connected ? "Mesen auto-tracking connected" : "Mesen auto-tracking not connected";
     }
 
     private void UpdateTimerDisplay()

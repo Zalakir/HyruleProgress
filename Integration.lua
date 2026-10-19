@@ -1,9 +1,10 @@
 -- Mesen 2 - Zelda 1 Randomizer
--- Diagnostic en lecture seule
+-- Export en lecture seule de la RAM pour le suivi automatique de Hyrule Progress
 
 local outputPath =
     os.getenv("LOCALAPPDATA")
     .. "\\HyruleProgress\\bridge.json"
+local tempPath = outputPath .. ".tmp"
 
 local frameCounter = 0
 
@@ -21,7 +22,7 @@ local function exportMemory()
 
     local romInfo = emu.getRomInfo()
 
-    local file = io.open(outputPath, "w")
+    local file = io.open(tempPath, "w")
     if not file then
         emu.log("Tracker : impossible d'ecrire le fichier JSON")
         return
@@ -39,6 +40,10 @@ local function exportMemory()
     file:write('"ramHex":"' .. table.concat(ram) .. '"')
     file:write("}")
     file:close()
+
+    -- Fichier temporaire puis renommage : l'application ne lit jamais un JSON a moitie ecrit
+    os.remove(outputPath)
+    os.rename(tempPath, outputPath)
 end
 
 emu.addEventCallback(function()
