@@ -1,3 +1,4 @@
 Resources/ItemImage/Asprite/
 Workflow/
-Tests/
+Tests/**
+*.asprite
