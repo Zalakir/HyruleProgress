@@ -6,6 +6,7 @@ A lightweight Windows desktop tracker prototype for Zelda 1 Randomizer.
 - Zelda-style inventory with a black background, green/gold frames, and pixel-art sprites from `Resources/ItemImage`
 - 5-by-3 item grid, separate hearts/bombs strip, nine-column dungeon panel, and equipment panel
 - Clickable item/equipment icons and independent dungeon maps, compasses, and completion indicators
+- Run stopwatch in the header with start/stop controls; elapsed time is saved across app restarts and resets with a new run
 - Inventory-only interface with the title/header and new-run reset button
 - Automatic local JSON save
 

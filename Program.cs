@@ -20,10 +20,13 @@ public sealed class TrackerState
     public List<TrackLocation> Locations { get; set; } = [];
     public int HeartUpgradeFlags { get; set; }
     public bool BombUpgrade { get; set; }
+    public long RunElapsedTicks { get; set; }
+    public DateTime? RunStartedAtUtc { get; set; }
+    public bool RunTimerInitialized { get; set; }
 
     public static TrackerState CreateDefault()
     {
-        var s = new TrackerState();
+        var s = new TrackerState { RunTimerInitialized = true };
         string[] items =
         [
             "Wooden Sword", "White Sword", "Magical Sword", "Wooden Boomerang",
@@ -74,6 +77,9 @@ public sealed class TrackerForm : Form
         "HyruleProgress", "save.json");
     private TrackerState state;
     private InventoryView inventory = null!;
+    private readonly System.Windows.Forms.Timer runTimer = new() { Interval = 1000 };
+    private Label timerDisplay = null!;
+    private Button timerToggle = null!;
 
     public TrackerForm()
     {
@@ -105,7 +111,13 @@ public sealed class TrackerForm : Form
         }
 
         state = LoadState();
+        if (!state.RunTimerInitialized)
+            state.RunTimerInitialized = true;
         BuildUi();
+        runTimer.Tick += (_, _) => UpdateTimerDisplay();
+        runTimer.Start();
+        FormClosing += (_, _) => SaveState();
+        Disposed += (_, _) => runTimer.Dispose();
         if (versionWarning != null)
             Shown += (_, _) => MessageBox.Show(this, versionWarning, "App version", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
@@ -149,21 +161,66 @@ public sealed class TrackerForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        var header = new Panel { Dock = DockStyle.Fill };
-        var title = new Label { Text = "HYRULE PROGRESS", Font = new Font("Consolas", 20, FontStyle.Bold), ForeColor = Color.White, AutoSize = true, Location = new Point(0, 0) };
+        var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, BackColor = Color.Black, Margin = Padding.Empty };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
+        var title = new Label { Text = "HYRULE PROGRESS", Font = new Font("Consolas", 20, FontStyle.Bold), ForeColor = Color.White, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
         header.Controls.Add(title);
+        timerDisplay = new Label
+        {
+            Text = "RUN 00:00:00", Font = new Font("Consolas", 17, FontStyle.Bold),
+            ForeColor = Color.FromArgb(232, 184, 0), Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter, AccessibleName = "Run timer"
+        };
+        header.Controls.Add(timerDisplay, 1, 0);
+        timerToggle = new Button { Width = 82, Height = 30, Dock = DockStyle.Fill, Margin = new Padding(3, 7, 3, 7) };
+        timerToggle.FlatStyle = FlatStyle.Flat;
+        timerToggle.BackColor = Color.FromArgb(24, 24, 24);
+        timerToggle.ForeColor = Color.White;
+        timerToggle.FlatAppearance.BorderColor = Color.FromArgb(112, 112, 112);
+        timerToggle.Click += (_, _) => ToggleRunTimer();
+        header.Controls.Add(timerToggle, 2, 0);
         var reset = new Button { Text = "New run / reset", Width = 140, Height = 30, Dock = DockStyle.Right };
         reset.FlatStyle = FlatStyle.Flat;
         reset.BackColor = Color.FromArgb(24, 24, 24);
         reset.ForeColor = Color.White;
         reset.FlatAppearance.BorderColor = Color.FromArgb(112, 112, 112);
         reset.Click += (_, _) => ResetRun();
-        header.Controls.Add(reset);
+        header.Controls.Add(reset, 3, 0);
         root.Controls.Add(header, 0, 0);
 
         inventory = new InventoryView(state);
         inventory.ProgressChanged += (_, _) => SaveState();
         root.Controls.Add(inventory, 0, 1);
+        UpdateTimerDisplay();
+    }
+
+    private void UpdateTimerDisplay()
+    {
+        var elapsedTicks = Math.Max(0, state.RunElapsedTicks);
+        if (state.RunStartedAtUtc is DateTime startedAt)
+            elapsedTicks += Math.Max(0, (DateTime.UtcNow - startedAt).Ticks);
+        var elapsed = TimeSpan.FromTicks(elapsedTicks);
+        timerDisplay.Text = $"RUN {(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+        timerToggle.Text = state.RunStartedAtUtc.HasValue ? "Stop" : "Start";
+        timerToggle.AccessibleName = state.RunStartedAtUtc.HasValue ? "Stop run timer" : "Start run timer";
+    }
+
+    private void ToggleRunTimer()
+    {
+        if (state.RunStartedAtUtc is DateTime startedAt)
+        {
+            state.RunElapsedTicks += Math.Max(0, (DateTime.UtcNow - startedAt).Ticks);
+            state.RunStartedAtUtc = null;
+        }
+        else
+        {
+            state.RunStartedAtUtc = DateTime.UtcNow;
+        }
+        UpdateTimerDisplay();
+        SaveState();
     }
 
     private void ResetRun()
@@ -171,6 +228,7 @@ public sealed class TrackerForm : Form
         if (MessageBox.Show("Start a new run? This replaces the current local save.", "New run", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
         state = TrackerState.CreateDefault();
         inventory.SetState(state);
+        UpdateTimerDisplay();
         SaveState();
     }
 }
