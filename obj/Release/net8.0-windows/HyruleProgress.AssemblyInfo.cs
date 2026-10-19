@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b0c9dd95041ec6976307962c7cbd1da3ab7828b9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+afc63f8e6fb8481c20a42a748f5ff6889948ebd8")]
 [assembly: System.Reflection.AssemblyProductAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
