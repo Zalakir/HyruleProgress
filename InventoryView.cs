@@ -23,6 +23,7 @@ internal sealed class InventoryView : UserControl
     private readonly List<(ItemTile Tile, Func<bool?> Read, Func<string>? Notes)> tiles = [];
     private readonly Dictionary<string, Image> sprites = [];
     private readonly ToolTip toolTip = new();
+    private ItemTile letterPotionTile = null!;
     private TrackerState state;
 
     public event EventHandler? ProgressChanged;
@@ -44,8 +45,8 @@ internal sealed class InventoryView : UserControl
 
         var left = CreateGrid(1, 2);
         left.Margin = new Padding(0, 0, 10, 0);
-        left.RowStyles[0].Height = 79;
-        left.RowStyles[1].Height = 21;
+        left.RowStyles[0].Height = 70;
+        left.RowStyles[1].Height = 30;
         layout.Controls.Add(left, 0, 0);
         var right = CreateGrid(1, 2);
         right.Margin = Padding.Empty;
@@ -58,23 +59,36 @@ internal sealed class InventoryView : UserControl
         var itemLayout = CreateGrid(5, 3);
         items.Controls.Add(itemLayout);
         foreach (var (name, sprite) in InventoryItems)
-            AddItem(itemLayout, name, sprite);
+        {
+            if (name == "Letter")
+                AddLetterPotion(itemLayout);
+            else
+                AddItem(itemLayout, name, sprite);
+        }
 
         var upgrades = new RetroFrame("", Color.FromArgb(32, 200, 48)) { Margin = Padding.Empty };
         left.Controls.Add(upgrades, 0, 1);
-        var upgradeLayout = CreateGrid(7, 1);
+        var upgradeLayout = CreateGrid(16, 2);
         upgrades.Controls.Add(upgradeLayout);
-        AddItem(upgradeLayout, "Heart Container", "HeartContainer");
-        for (int index = 0; index < 4; index++)
+        for (int index = 0; index < TrackerState.HeartContainerCount; index++)
         {
-            int flag = 1 << index;
-            AddTile(upgradeLayout, $"Heart container upgrade {index + 1}", "HeartContainer",
-                () => (this.state.HeartUpgradeFlags & flag) != 0,
-                () => this.state.HeartUpgradeFlags ^= flag);
+            int flag = index == 0 ? 0 : 1 << (index - 1);
+            var heart = index == 0
+                ? AddItem(upgradeLayout, "Heart Container", "HeartContainer")
+                : AddTile(upgradeLayout, $"Heart container upgrade {index}", "HeartContainer",
+                    () => (this.state.HeartUpgradeFlags & flag) != 0,
+                    () => this.state.HeartUpgradeFlags ^= flag);
+            upgradeLayout.SetCellPosition(heart, new TableLayoutPanelCellPosition(index, index % 2));
+            upgradeLayout.SetColumnSpan(heart, 2);
         }
-        AddItem(upgradeLayout, "Bombs", "Bomb");
-        AddTile(upgradeLayout, "Bomb capacity upgrade", "Bomb",
+        var firstBag = AddTile(upgradeLayout, "Bomb Bag upgrade 1", "BombBag",
             () => this.state.BombUpgrade, () => this.state.BombUpgrade = !this.state.BombUpgrade);
+        upgradeLayout.SetCellPosition(firstBag, new TableLayoutPanelCellPosition(14, 0));
+        upgradeLayout.SetColumnSpan(firstBag, 2);
+        var secondBag = AddTile(upgradeLayout, "Bomb Bag upgrade 2", "BombBag",
+            () => this.state.SecondBombUpgrade, () => this.state.SecondBombUpgrade = !this.state.SecondBombUpgrade);
+        upgradeLayout.SetCellPosition(secondBag, new TableLayoutPanelCellPosition(14, 1));
+        upgradeLayout.SetColumnSpan(secondBag, 2);
 
         var dungeons = new RetroFrame("DUNGEONS", Color.FromArgb(232, 184, 0)) { Margin = new Padding(0, 0, 0, 8) };
         right.Controls.Add(dungeons, 0, 0);
@@ -110,13 +124,23 @@ internal sealed class InventoryView : UserControl
 
     public void RefreshProgress()
     {
+        var (name, sprite) = state.CurrentPotion switch
+        {
+            Potion.Blue => ("Blue Potion", "BluePotion"),
+            Potion.Red => ("Red Potion", "RedPotion"),
+            _ => ("Letter", "Letter")
+        };
+        letterPotionTile.SetContent(GetSprite(sprite), name);
         foreach (var (tile, read, notes) in tiles)
         {
             bool? value = read();
             tile.Enabled = value.HasValue;
             tile.Obtained = value == true;
             string description = !tile.Enabled ? $"{tile.AccessibleName} - not in this run"
-                : $"{tile.AccessibleName} - {(tile.Obtained ? "obtained / complete" : "not obtained / incomplete")}. Click or press Space to toggle.";
+                : $"{tile.AccessibleName} - {(tile.Obtained ? "obtained / complete" : "not obtained / incomplete")}. "
+                    + (tile == letterPotionTile
+                        ? "Click or press Space/Enter to cycle: uncollected letter, letter, blue potion, red potion."
+                        : "Click or press Space to toggle.");
             string? note = notes?.Invoke();
             if (!string.IsNullOrWhiteSpace(note))
                 description += $"\n{note}";
@@ -133,10 +157,10 @@ internal sealed class InventoryView : UserControl
         return grid;
     }
 
-    private void AddItem(TableLayoutPanel grid, string name, string? sprite)
+    private ItemTile AddItem(TableLayoutPanel grid, string name, string? sprite)
     {
         TrackItem? Find() => state.Items.FirstOrDefault(x => x.Name == name);
-        AddTile(grid, name, sprite, () => Find()?.Obtained,
+        return AddTile(grid, name, sprite, () => Find()?.Obtained,
             () =>
             {
                 var item = Find() ?? throw new InvalidOperationException($"Item is not in this run: {name}");
@@ -145,6 +169,27 @@ internal sealed class InventoryView : UserControl
     }
 
     private enum DungeonProgress { Map, Compass, Complete }
+
+    private void AddLetterPotion(TableLayoutPanel grid)
+    {
+        TrackItem? Find() => state.Items.FirstOrDefault(x => x.Name == "Letter");
+        letterPotionTile = AddTile(grid, "Letter", "Letter",
+            () => state.CurrentPotion != Potion.None ? true : Find()?.Obtained,
+            () =>
+            {
+                var letter = Find() ?? throw new InvalidOperationException("Item is not in this run: Letter");
+                switch (state.CurrentPotion)
+                {
+                    case Potion.None when !letter.Obtained: letter.Obtained = true; break;
+                    case Potion.None: state.CurrentPotion = Potion.Blue; break;
+                    case Potion.Blue: state.CurrentPotion = Potion.Red; break;
+                    case Potion.Red:
+                        state.CurrentPotion = Potion.None;
+                        letter.Obtained = false;
+                        break;
+                }
+            }, () => Find()?.Notes ?? "");
+    }
 
     private void AddDungeonTile(TableLayoutPanel grid, int level, DungeonProgress progress)
     {
@@ -173,7 +218,7 @@ internal sealed class InventoryView : UserControl
             });
     }
 
-    private void AddTile(TableLayoutPanel grid, string name, string? sprite, Func<bool?> read, Action toggle, Func<string>? notes = null)
+    private Image? GetSprite(string? sprite)
     {
         Image? image = null;
         if (sprite != null && !sprites.TryGetValue(sprite, out image))
@@ -185,8 +230,12 @@ internal sealed class InventoryView : UserControl
             image = new Bitmap(source);
             sprites.Add(sprite, image);
         }
+        return image;
+    }
 
-        var tile = new ItemTile(image, name)
+    private ItemTile AddTile(TableLayoutPanel grid, string name, string? sprite, Func<bool?> read, Action toggle, Func<string>? notes = null)
+    {
+        var tile = new ItemTile(GetSprite(sprite), name)
         {
             Dock = DockStyle.Fill, Margin = new Padding(1), AccessibleName = name
         };
@@ -198,6 +247,7 @@ internal sealed class InventoryView : UserControl
         };
         tiles.Add((tile, read, notes));
         grid.Controls.Add(tile);
+        return tile;
     }
 
     protected override void Dispose(bool disposing)
@@ -255,8 +305,8 @@ internal sealed class RetroFrame : Panel
 
 internal sealed class ItemTile : Control
 {
-    private readonly Image? image;
-    private readonly string itemName;
+    private Image? image;
+    private string itemName;
     private bool obtained;
     private bool hovered;
 
@@ -278,6 +328,15 @@ internal sealed class ItemTile : Control
         TabStop = true;
         AccessibleRole = AccessibleRole.CheckButton;
         Font = new Font("Consolas", 10, FontStyle.Bold);
+    }
+
+    public void SetContent(Image? value, string name)
+    {
+        if (image == value && itemName == name) return;
+        image = value;
+        itemName = name;
+        AccessibleName = name;
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -313,8 +372,6 @@ internal sealed class ItemTile : Control
                 Obtained ? Color.White : Color.DimGray,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
         }
-        if (Obtained)
-            e.Graphics.FillRectangle(Brushes.LimeGreen, Width - 9, 3, 5, 5);
         if (Focused) ControlPaint.DrawFocusRectangle(e.Graphics, new Rectangle(3, 3, Math.Max(0, Width - 7), Math.Max(0, Height - 7)));
     }
 

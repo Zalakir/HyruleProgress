@@ -4,20 +4,25 @@ A lightweight Windows desktop tracker prototype for Zelda 1 Randomizer.
 
 ## Features
 - Zelda-style inventory with a black background, green/gold frames, and pixel-art sprites from `Resources/ItemImage`
-- 5-by-3 item grid, separate hearts/bombs strip, nine-column dungeon panel, and equipment panel
+- 5-by-3 item grid, separate hearts/Bomb Bags strip, nine-column dungeon panel, and equipment panel
 - Clickable item/equipment icons and independent dungeon maps, compasses, and completion indicators
-- Run stopwatch in the header with start/stop controls; elapsed time is saved across app restarts and resets with a new run
+- Run stopwatch in the header with automatic Mesen start/finish detection and manual start/stop controls; elapsed time is saved across app restarts and resets with a new run
 - Automatic tracking from the Mesen 2 emulator through `Integration.lua`
 - Inventory-only interface with the title/header and new-run reset button
 - Automatic local JSON save
 
 ## Inventory controls
-- Click an icon (or focus it with Tab and press Space/Enter) to toggle an item. Dim icons are missing; bright icons with a green corner marker are obtained.
+- Click an icon (or focus it with Tab and press Space/Enter) to toggle an item. Dim icons are missing; bright icons are obtained.
+- The letter/potion slot shows the letter when no potion is held, the blue potion for one dose, or the red potion for two doses. Clicking it (or pressing Space/Enter) cycles through uncollected letter, collected letter, blue potion, red potion, then back to uncollected letter. Its current potion is saved and cleared by a new-run reset.
 - Hover over an icon for its name, status, and item notes.
 - Each dungeon column has its number, map, compass, and Triforce. Maps and compasses are saved per dungeon; Triforces toggle the existing Level 1-9 completed checks, not separate collectible pieces.
-- The bottom-left strip contains five independent heart slots and two bomb slots. The first heart and first bomb match their checklist entries; the remaining hearts and bomb capacity upgrade are saved separately.
+- The bottom-left panel contains 13 independent collectible Heart Containers (excluding the 3 starting hearts, for 16 hearts in game). They alternate top/bottom from left to right in a staggered W pattern: seven on top, six below. The two Bomb Bag upgrades sit at the right, upgrade 1 above upgrade 2, both using `BombBag.png`. The first heart matches its checklist entry; the remaining hearts and both Bomb Bag upgrades are saved separately. Click each heart or bag to toggle it independently. Individual bombs and current bomb count are not tracked.
+- Existing saves retain their first five heart slots; the eight additional slots start uncollected until marked manually or detected in Mesen.
+- Existing saves keep their previous bomb capacity upgrade as Bomb Bag upgrade 1; upgrade 2 starts uncollected. Legacy Bombs entries remain preserved but are no longer displayed or updated, and bomb possession does not count as a bag upgrade.
 - Tabs, checklist/location editors, counters, and status text have been removed. Existing notes, locations, and items not displayed in the inventory remain preserved in saved data.
 - Use **New run / reset** in the header to clear progress after confirmation. Save errors and version-file warnings appear in dialogs.
+- With Mesen connected, the stopwatch starts once when the opening gameplay screen is ready and Link becomes controllable, not during the title, file select, or opening transition. It stops when Link reaches Zelda after Ganon, before the ending curtain/credits. If the tracker first connects during gameplay, it starts from that point; it cannot recover time played before connecting.
+- The stopwatch keeps running through menus, deaths, emulator pauses/disconnections, and app restarts. Manual Start/Stop remains available; a manual stop is not undone by auto-start. Completed runs do not auto-start again. Use **New run / reset** to arm automatic timing for another run. Timer start/completion flags are saved. Detection uses the existing bridge updates and polling, so it can lag the game by about a second; it is not frame-accurate speedrun timing.
 - Item images are embedded in the app, including single-file published builds. Existing saves and reset behavior are preserved.
 - Older saves gain an uncollected Arrows entry; new upgrade and per-dungeon map/compass fields start uncollected.
 
@@ -55,15 +60,16 @@ Repeat steps 3-6 each time you restart Mesen. Your tracker progress is saved, so
 ### Troubleshooting
 - **Indicator stays gray:** make sure the script is running (no error in the script window log) and that `%LOCALAPPDATA%\HyruleProgress\bridge.json` is being updated. Press **Win + R** and enter `%LOCALAPPDATA%\HyruleProgress` to open the folder.
 - **Indicator is green but nothing updates:** the tracker ignores the title and file-select screens; progress appears once you are playing a save file.
-- **Starting a new seed:** click **New run / reset** before playing, because auto-tracking only adds progress and never clears it.
+- **Starting a new seed:** click **New run / reset** before playing, because auto-tracking preserves collected progress (only Food and the current potion follow consumption).
 
 ### What is tracked
 The script writes a dump of the NES RAM to `%LOCALAPPDATA%\HyruleProgress\bridge.json` about twice per second. The tracker reads it and automatically marks:
 - Every inventory and equipment item, including swords, candles, rings, arrows, boomerangs, and Magical Shield
-- Heart containers gained since the 3 starting hearts (up to 5 slots), Bombs, and bomb capacity upgrades
+- Heart containers gained since the 3 starting hearts (all 13 collectible containers, up to 16 hearts in game) and the two Bomb Bag upgrades (maximum bomb capacities of 12 and 16, respectively, up from the starting capacity of 8). Spending bombs does not clear bag upgrades.
 - Maps and compasses for Levels 1-9, plus the Triforce for Levels 1-8
+- Stopwatch start when Link becomes playable and finish on Zelda rescue (with the win-game mode as a fallback if the initial contact was missed)
 
-Auto-tracking only adds progress and never clears it, so manual clicks still work and consumed items such as Food or Letter remain marked. RAM is ignored on the title and file-select screens. Level 9 completion and overworld location checks remain manual. Because the game keeps only the best sword, candle, ring, and arrows, picking up a lower tier after a higher one cannot be detected.
+Auto-tracking only adds collected progress, except for Food and the current potion. Food checks when acquired and unchecks when used; buying it again checks it again. The letter/potion slot follows the current potion, including red-to-blue and blue-to-letter transitions when potions are used. Letter ownership stays tracked separately and remains marked after use, so the letter is dim if it has never been collected. Manual clicks still work, but while connected, the next in-game update overrides manual Food and potion changes. Older saves start with no potion. RAM is ignored on the title and file-select screens. Level 9 completion and overworld location checks remain manual. Because the game keeps only the best sword, candle, ring, and arrows, picking up a lower tier after a higher one cannot be detected.
 
 ## Save location
 `%LOCALAPPDATA%\HyruleProgress\save.json`

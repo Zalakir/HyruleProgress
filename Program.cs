@@ -14,15 +14,23 @@ internal static class Program
     }
 }
 
+public enum Potion { None, Blue, Red }
+
 public sealed class TrackerState
 {
+    public const int HeartContainerCount = 13;
+
     public List<TrackItem> Items { get; set; } = [];
     public List<TrackLocation> Locations { get; set; } = [];
     public int HeartUpgradeFlags { get; set; }
     public bool BombUpgrade { get; set; }
+    public bool SecondBombUpgrade { get; set; }
+    public Potion CurrentPotion { get; set; }
     public long RunElapsedTicks { get; set; }
     public DateTime? RunStartedAtUtc { get; set; }
     public bool RunTimerInitialized { get; set; }
+    public bool RunTimerHasStarted { get; set; }
+    public bool RunTimerCompleted { get; set; }
 
     public static TrackerState CreateDefault()
     {
@@ -30,7 +38,7 @@ public sealed class TrackerState
         string[] items =
         [
             "Wooden Sword", "White Sword", "Magical Sword", "Wooden Boomerang",
-            "Magical Boomerang", "Bow", "Arrows", "Silver Arrows", "Bombs", "Blue Candle",
+            "Magical Boomerang", "Bow", "Arrows", "Silver Arrows", "Blue Candle",
             "Red Candle", "Recorder", "Food", "Letter",
             "Power Bracelet", "Raft", "Stepladder", "Magic Key", "Blue Ring",
             "Red Ring", "Magical Shield", "Book of Magic", "Magical Rod",
@@ -213,9 +221,13 @@ public sealed class TrackerForm : Form
     {
         var ram = MesenBridge.TryReadRam();
         SetBridgeStatus(ram != null);
-        if (ram != null && MesenBridge.Apply(state, ram))
+        if (ram == null) return;
+        bool timerChanged = MesenBridge.ApplyRunTimer(state, ram, DateTime.UtcNow);
+        bool progressChanged = MesenBridge.Apply(state, ram);
+        if (timerChanged || progressChanged)
         {
-            inventory.RefreshProgress();
+            if (timerChanged) UpdateTimerDisplay();
+            if (progressChanged) inventory.RefreshProgress();
             SaveState();
         }
     }
@@ -240,6 +252,7 @@ public sealed class TrackerForm : Form
 
     private void ToggleRunTimer()
     {
+        state.RunTimerHasStarted = true;
         if (state.RunStartedAtUtc is DateTime startedAt)
         {
             state.RunElapsedTicks += Math.Max(0, (DateTime.UtcNow - startedAt).Ticks);
