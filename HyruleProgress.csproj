@@ -10,6 +10,7 @@
     <ApplicationIcon>Resources\icon\HyruleProgress.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Tests\**\*.cs" />
     <Content Include="Resources\icon\HyruleProgress.ico">
 	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>

@@ -1,3 +1,5 @@
 ItemImage/Asprite/
 bin/Release/net8.0-windows/win-x64/publish/HyruleProgress.exe
 Workflow/
+Tests/bin/
+Tests/obj/

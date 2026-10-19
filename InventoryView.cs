@@ -313,7 +313,22 @@ internal sealed class ItemTile : Control
     public bool Obtained
     {
         get => obtained;
-        set { if (obtained != value) { obtained = value; Invalidate(); } }
+        set
+        {
+            if (obtained == value) return;
+            obtained = value;
+            Invalidate();
+            if (IsHandleCreated)
+                AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
+        }
+    }
+
+    protected override AccessibleObject CreateAccessibilityInstance() => new ItemTileAccessibleObject(this);
+
+    private sealed class ItemTileAccessibleObject(ItemTile owner) : ControlAccessibleObject(owner)
+    {
+        public override AccessibleStates State => base.State
+            | (owner.Obtained ? AccessibleStates.Checked : AccessibleStates.None);
     }
 
     public ItemTile(Image? image, string itemName)

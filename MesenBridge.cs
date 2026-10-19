@@ -72,10 +72,22 @@ internal static class MesenBridge
         }
     }
 
-    public static bool IsInGame(byte[] ram) => ram[GameMode] is >= 0x04 and <= 0x13 and not 0x0E;
+    private static void ValidateRam(byte[] ram)
+    {
+        ArgumentNullException.ThrowIfNull(ram);
+        if (ram.Length < 0x0800)
+            throw new ArgumentException("A complete 2 KiB NES RAM snapshot is required.", nameof(ram));
+    }
+
+    public static bool IsInGame(byte[] ram)
+    {
+        ValidateRam(ram);
+        return ram[GameMode] is >= 0x04 and <= 0x0C or >= 0x10 and <= 0x13;
+    }
 
     public static bool ApplyRunTimer(TrackerState state, byte[] ram, DateTime utcNow)
     {
+        ValidateRam(ram);
         if (state.RunTimerCompleted) return false;
         bool changed = false;
         // Older saves already using the manual stopwatch must not auto-start again.
@@ -93,11 +105,7 @@ internal static class MesenBridge
                 && ram[ZeldaState] == 1 && ram[LinkState] == 0x40);
         if (rescuedZelda)
         {
-            if (state.RunStartedAtUtc is DateTime startedAt)
-            {
-                state.RunElapsedTicks += Math.Max(0, (utcNow - startedAt).Ticks);
-                state.RunStartedAtUtc = null;
-            }
+            state.StopRunTimer(utcNow);
             state.RunTimerCompleted = true;
             return true;
         }

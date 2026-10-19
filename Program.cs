@@ -32,6 +32,20 @@ public sealed class TrackerState
     public bool RunTimerHasStarted { get; set; }
     public bool RunTimerCompleted { get; set; }
 
+    public long GetElapsedTicks(DateTime utcNow)
+    {
+        long elapsed = Math.Max(0, RunElapsedTicks);
+        long running = RunStartedAtUtc is DateTime startedAt
+            ? Math.Max(0, (utcNow - startedAt).Ticks) : 0;
+        return Math.Min(elapsed, TimeSpan.MaxValue.Ticks - running) + running;
+    }
+
+    public void StopRunTimer(DateTime utcNow)
+    {
+        RunElapsedTicks = GetElapsedTicks(utcNow);
+        RunStartedAtUtc = null;
+    }
+
     public static TrackerState CreateDefault()
     {
         var s = new TrackerState { RunTimerInitialized = true };
@@ -90,6 +104,7 @@ public sealed class TrackerForm : Form
     private Button timerToggle = null!;
     private readonly System.Windows.Forms.Timer bridgeTimer = new() { Interval = 500 };
     private Label bridgeStatus = null!;
+    private bool saveBlocked;
 
     public TrackerForm()
     {
@@ -138,29 +153,28 @@ public sealed class TrackerForm : Form
     {
         try
         {
-            if (File.Exists(savePath))
-            {
-                var loaded = JsonSerializer.Deserialize<TrackerState>(File.ReadAllText(savePath));
-                if (loaded != null)
-                {
-                    if (!loaded.Items.Any(x => x.Name == "Arrows"))
-                        loaded.Items.Add(new TrackItem { Name = "Arrows" });
-                    return loaded;
-                }
-            }
+            return TrackerStore.Load(savePath);
         }
-        catch { }
-        return TrackerState.CreateDefault();
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            saveBlocked = true;
+            Shown += (_, _) => MessageBox.Show(this,
+                $"The saved run could not be loaded: {ex.Message}\n\nThe original save will not be overwritten. "
+                + "Restore it and restart the app, or use New run / reset to replace it. "
+                + "Changes in this session will not be saved until then.",
+                "Load error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return TrackerState.CreateDefault();
+        }
     }
 
     private void SaveState()
     {
+        if (saveBlocked) return;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
-            File.WriteAllText(savePath, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
+            TrackerStore.Save(savePath, state);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
             MessageBox.Show(this, "Save failed: " + ex.Message, "Save error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -241,10 +255,7 @@ public sealed class TrackerForm : Form
 
     private void UpdateTimerDisplay()
     {
-        var elapsedTicks = Math.Max(0, state.RunElapsedTicks);
-        if (state.RunStartedAtUtc is DateTime startedAt)
-            elapsedTicks += Math.Max(0, (DateTime.UtcNow - startedAt).Ticks);
-        var elapsed = TimeSpan.FromTicks(elapsedTicks);
+        var elapsed = TimeSpan.FromTicks(state.GetElapsedTicks(DateTime.UtcNow));
         timerDisplay.Text = $"RUN {(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
         timerToggle.Text = state.RunStartedAtUtc.HasValue ? "Stop" : "Start";
         timerToggle.AccessibleName = state.RunStartedAtUtc.HasValue ? "Stop run timer" : "Start run timer";
@@ -253,10 +264,9 @@ public sealed class TrackerForm : Form
     private void ToggleRunTimer()
     {
         state.RunTimerHasStarted = true;
-        if (state.RunStartedAtUtc is DateTime startedAt)
+        if (state.RunStartedAtUtc.HasValue)
         {
-            state.RunElapsedTicks += Math.Max(0, (DateTime.UtcNow - startedAt).Ticks);
-            state.RunStartedAtUtc = null;
+            state.StopRunTimer(DateTime.UtcNow);
         }
         else
         {
@@ -270,6 +280,7 @@ public sealed class TrackerForm : Form
     {
         if (MessageBox.Show("Start a new run? This replaces the current local save.", "New run", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
         state = TrackerState.CreateDefault();
+        saveBlocked = false;
         inventory.SetState(state);
         UpdateTimerDisplay();
         SaveState();

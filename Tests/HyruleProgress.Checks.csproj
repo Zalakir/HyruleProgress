@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HyruleProgress</RootNamespace>
+    <StartupObject>HyruleProgress.RegressionChecks</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Program.cs" Link="Program.cs" />
+    <Compile Include="..\TrackerStore.cs" Link="TrackerStore.cs" />
+    <Compile Include="..\MesenBridge.cs" Link="MesenBridge.cs" />
+    <Compile Include="..\InventoryView.cs" Link="InventoryView.cs" />
+    <EmbeddedResource Include="..\Resources\ItemImage\*.png">
+      <LogicalName>HyruleProgress.Resources.ItemImage.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

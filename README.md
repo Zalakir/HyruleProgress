@@ -20,11 +20,11 @@ A lightweight Windows desktop tracker prototype for Zelda 1 Randomizer.
 - Existing saves retain their first five heart slots; the eight additional slots start uncollected until marked manually or detected in Mesen.
 - Existing saves keep their previous bomb capacity upgrade as Bomb Bag upgrade 1; upgrade 2 starts uncollected. Legacy Bombs entries remain preserved but are no longer displayed or updated, and bomb possession does not count as a bag upgrade.
 - Tabs, checklist/location editors, counters, and status text have been removed. Existing notes, locations, and items not displayed in the inventory remain preserved in saved data.
-- Use **New run / reset** in the header to clear progress after confirmation. Save errors and version-file warnings appear in dialogs.
+- Use **New run / reset** in the header to clear progress after confirmation. Load/save errors and version-file warnings appear in dialogs.
 - With Mesen connected, the stopwatch starts once when the opening gameplay screen is ready and Link becomes controllable, not during the title, file select, or opening transition. It stops when Link reaches Zelda after Ganon, before the ending curtain/credits. If the tracker first connects during gameplay, it starts from that point; it cannot recover time played before connecting.
 - The stopwatch keeps running through menus, deaths, emulator pauses/disconnections, and app restarts. Manual Start/Stop remains available; a manual stop is not undone by auto-start. Completed runs do not auto-start again. Use **New run / reset** to arm automatic timing for another run. Timer start/completion flags are saved. Detection uses the existing bridge updates and polling, so it can lag the game by about a second; it is not frame-accurate speedrun timing.
 - Item images are embedded in the app, including single-file published builds. Existing saves and reset behavior are preserved.
-- Older saves gain an uncollected Arrows entry; new upgrade and per-dungeon map/compass fields start uncollected.
+- Older saves gain missing default inventory and location entries without losing existing progress or notes; new upgrade and per-dungeon map/compass fields start uncollected.
 
 ## Requirements
 - Windows 10/11
@@ -39,6 +39,10 @@ To publish a standalone Windows build:
 `dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true`
 
 The published executable will be under `bin/Release/net8.0-windows/win-x64/publish/`.
+
+## Regression checks
+Run `dotnet run --project Tests\HyruleProgress.Checks.csproj` on Windows with the .NET 8 SDK (or a newer compatible SDK).
+These dependency-free checks cover save validation and migration, failed-write preservation, timer transitions, gameplay filtering, consumables, heart and Bomb Bag upgrades, inventory layout, rendering, and checked-state accessibility. They use a temporary save directory, not your actual saved run.
 
 ## App version
 The app version is stored in `version.txt` and displayed in the window title. Update the file's version text to change the displayed version; the file is copied alongside the app during build and publish, so it can also be updated without rebuilding.
@@ -69,10 +73,12 @@ The script writes a dump of the NES RAM to `%LOCALAPPDATA%\HyruleProgress\bridge
 - Maps and compasses for Levels 1-9, plus the Triforce for Levels 1-8
 - Stopwatch start when Link becomes playable and finish on Zelda rescue (with the win-game mode as a fallback if the initial contact was missed)
 
-Auto-tracking only adds collected progress, except for Food and the current potion. Food checks when acquired and unchecks when used; buying it again checks it again. The letter/potion slot follows the current potion, including red-to-blue and blue-to-letter transitions when potions are used. Letter ownership stays tracked separately and remains marked after use, so the letter is dim if it has never been collected. Manual clicks still work, but while connected, the next in-game update overrides manual Food and potion changes. Older saves start with no potion. RAM is ignored on the title and file-select screens. Level 9 completion and overworld location checks remain manual. Because the game keeps only the best sword, candle, ring, and arrows, picking up a lower tier after a higher one cannot be detected.
+Auto-tracking only adds collected progress, except for Food and the current potion. Food checks when acquired and unchecks when used; buying it again checks it again. The letter/potion slot follows the current potion, including red-to-blue and blue-to-letter transitions when potions are used. Letter ownership stays tracked separately and remains marked after use, so the letter is dim if it has never been collected. Manual clicks still work, but while connected, the next in-game update overrides manual Food and potion changes. Older saves start with no potion. Inventory RAM is ignored on title, file-select, save, name-registration, and file-elimination screens. Level 9 completion and overworld location checks remain manual. Because the game keeps only the best sword, candle, ring, and arrows, picking up a lower tier after a higher one cannot be detected.
 
 ## Save location
 `%LOCALAPPDATA%\HyruleProgress\save.json`
+
+Saves are written to a temporary file and flushed before replacing the previous complete save. An unreadable or invalid save triggers a load-error dialog and disables saving for that session to protect the original file. Restore the file and restart the app, or explicitly choose **New run / reset** to replace it; changes made while saving is disabled are not persisted.
 
 ## Important scope note
 This is a first functional prototype, not a complete or seed-aware Zelda 1 Randomizer logic database. It does not read the randomizer seed. Inventory and dungeon progress can be tracked automatically from Mesen 2 (verified with Zelda Randomizer 3.6.6) or manually.
