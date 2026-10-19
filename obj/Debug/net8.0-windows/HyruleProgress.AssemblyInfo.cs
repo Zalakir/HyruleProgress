@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e619cffc01260895967152dd9603136adb2c0cfb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d2e64d2d0fdf7f0b6bc9a7109e02cda8541fbb68")]
 [assembly: System.Reflection.AssemblyProductAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HyruleProgress")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
