@@ -52,8 +52,11 @@ internal static class MesenBridge
     private const int DefaultMaxBombs = 8;
     private const int BombUpgradeSize = 4;
 
-    public static byte[]? TryReadRam()
+    public static byte[]? TryReadRam() => TryReadRam(out _);
+
+    public static byte[]? TryReadRam(out IReadOnlyList<DungeonRoomPickup> roomPickups)
     {
+        roomPickups = [];
         try
         {
             var info = new FileInfo(BridgePath);
@@ -61,17 +64,31 @@ internal static class MesenBridge
                 return null;
             using var stream = new FileStream(BridgePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var json = JsonDocument.Parse(stream);
-            var root = json.RootElement;
-            if (!root.TryGetProperty("ramHex", out var hex) || hex.GetString() is not { } text)
-                return null;
-            var ram = Convert.FromHexString(text);
-            return ram.Length >= 0x0800 ? ram : null;
+            return ParseRamSnapshot(json.RootElement, out roomPickups);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or FormatException or InvalidOperationException)
         {
             // The script rewrites the file twice a second; a partial read is retried on the next poll.
             return null;
         }
+    }
+
+    internal static byte[]? ParseRamSnapshot(JsonElement root, out IReadOnlyList<DungeonRoomPickup> roomPickups)
+    {
+        roomPickups = [];
+        if (!root.TryGetProperty("ramHex", out var hex) || hex.GetString() is not { } text)
+            return null;
+        var ram = Convert.FromHexString(text);
+        if (ram.Length < 0x0800) return null;
+        if (root.TryGetProperty("roomPickups", out var pickups))
+        {
+            var events = pickups.Deserialize<List<DungeonRoomPickup>>()
+                ?? throw new JsonException("Room pickups must be an array.");
+            if (events.Any(x => x == null || !DungeonRoomTracker.IsValid(x)))
+                throw new JsonException("Invalid room pickup data.");
+            roomPickups = events;
+        }
+        return ram;
     }
 
     private static void ValidateRam(byte[] ram)

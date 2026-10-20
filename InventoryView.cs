@@ -20,20 +20,6 @@ internal sealed class InventoryView : UserControl
         ("Power Bracelet", "PowerBracelet"), ("Blue Ring", "BlueRing"), ("Red Ring", "RedRing")
     ];
 
-    private static readonly (int BossRooms, int MobRooms, int Basements)[] FirstQuestRooms =
-    [
-        (1, 1, 1), (1, 1, 0), (1, 0, 1),
-        (1, 0, 1), (1, 0, 1), (1, 0, 1),
-        (1, 0, 1), (1, 0, 2), (0, 0, 2)
-    ];
-
-    private static readonly (int BossRooms, int MobRooms, int Basements)[] SecondQuestRooms =
-    [
-        (1, 1, 0), (1, 0, 1), (1, 1, 0),
-        (1, 0, 2), (1, 0, 1), (1, 0, 1),
-        (1, 0, 1), (1, 0, 2), (0, 0, 2)
-    ];
-
     private readonly List<(ItemTile Tile, Func<bool?> Read, Func<string>? Notes)> tiles = [];
     private readonly Dictionary<string, Image> sprites = [];
     private readonly ToolTip toolTip = new();
@@ -215,9 +201,9 @@ internal sealed class InventoryView : UserControl
                 control.Dispose();
             }
 
-            var rooms = secondQuest ? SecondQuestRooms : FirstQuestRooms;
+            var rooms = DungeonRoomTracker.GetRooms(secondQuest);
             bool isSecondQuest = secondQuest;
-            for (int dungeon = 0; dungeon < rooms.Length; dungeon++)
+            for (int dungeon = 0; dungeon < rooms.Count; dungeon++)
             {
                 int level = dungeon + 1;
                 int row = 0;
@@ -244,7 +230,7 @@ internal sealed class InventoryView : UserControl
                                     location.SecondQuestRoomFlags ^= flag;
                                 else
                                     location.FirstQuestRoomFlags ^= flag;
-                            }, () => $"{(isSecondQuest ? "Second Quest" : "First Quest")} room. Checked means looted; automatic loot detection is not connected.");
+                            }, () => $"{(isSecondQuest ? "Second Quest" : "First Quest")} room. Checked means looted. Manual checks and automatic major-item pickups are supported.");
                         dungeonRooms.SetCellPosition(indicator, new TableLayoutPanelCellPosition(dungeon, row++));
                     }
                 }

@@ -22,6 +22,8 @@ public sealed class TrackerState
 
     public List<TrackItem> Items { get; set; } = [];
     public List<TrackLocation> Locations { get; set; } = [];
+    public HashSet<string> ProcessedRoomPickupIds { get; set; } = [];
+    public bool RoomPickupBaselinePending { get; set; }
     public int HeartUpgradeFlags { get; set; }
     public bool BombUpgrade { get; set; }
     public bool SecondBombUpgrade { get; set; }
@@ -242,11 +244,17 @@ public sealed class TrackerForm : Form
 
     private void PollBridge()
     {
-        var ram = MesenBridge.TryReadRam();
+        var ram = MesenBridge.TryReadRam(out var roomPickups);
         SetBridgeStatus(ram != null);
         if (ram == null) return;
         bool timerChanged = MesenBridge.ApplyRunTimer(state, ram, DateTime.UtcNow);
         bool progressChanged = MesenBridge.Apply(state, ram);
+        progressChanged |= DungeonRoomTracker.Apply(state, roomPickups, state.RoomPickupBaselinePending);
+        if (state.RoomPickupBaselinePending)
+        {
+            state.RoomPickupBaselinePending = false;
+            progressChanged = true;
+        }
         if (timerChanged || progressChanged)
         {
             if (timerChanged) UpdateTimerDisplay();
@@ -332,6 +340,8 @@ public sealed class TrackerForm : Form
     {
         if (MessageBox.Show("Start a new run? This replaces the current local save.", "New run", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
         state = TrackerState.CreateDefault();
+        state.RoomPickupBaselinePending = MesenBridge.TryReadRam(out var previousPickups) == null;
+        DungeonRoomTracker.Apply(state, previousPickups, baselineOnly: true);
         saveBlocked = false;
         inventory.SetState(state);
         UpdateTimerDisplay();
