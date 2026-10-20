@@ -20,9 +20,27 @@ internal sealed class InventoryView : UserControl
         ("Power Bracelet", "PowerBracelet"), ("Blue Ring", "BlueRing"), ("Red Ring", "RedRing")
     ];
 
+    private static readonly (int BossRooms, int MobRooms, int Basements)[] FirstQuestRooms =
+    [
+        (1, 1, 1), (1, 1, 0), (1, 0, 1),
+        (1, 0, 1), (1, 0, 1), (1, 0, 1),
+        (1, 0, 1), (1, 0, 2), (0, 0, 2)
+    ];
+
+    private static readonly (int BossRooms, int MobRooms, int Basements)[] SecondQuestRooms =
+    [
+        (1, 1, 0), (1, 0, 1), (1, 1, 0),
+        (1, 0, 2), (1, 0, 1), (1, 0, 1),
+        (1, 0, 1), (1, 0, 2), (0, 0, 2)
+    ];
+
     private readonly List<(ItemTile Tile, Func<bool?> Read, Func<string>? Notes)> tiles = [];
     private readonly Dictionary<string, Image> sprites = [];
     private readonly ToolTip toolTip = new();
+    private readonly TableLayoutPanel dungeonRooms;
+    private readonly Label questLabel;
+    private readonly Button questToggle;
+    private bool secondQuest;
     private ItemTile letterPotionTile = null!;
     private TrackerState state;
 
@@ -50,8 +68,9 @@ internal sealed class InventoryView : UserControl
         layout.Controls.Add(left, 0, 0);
         var right = CreateGrid(1, 2);
         right.Margin = Padding.Empty;
-        right.RowStyles[0].Height = 51;
-        right.RowStyles[1].Height = 49;
+        right.RowStyles[0].SizeType = SizeType.Absolute;
+        right.RowStyles[0].Height = 350;
+        right.RowStyles[1].Height = 100;
         layout.Controls.Add(right, 1, 0);
 
         var items = new RetroFrame("ITEMS", Color.FromArgb(32, 200, 48)) { Margin = new Padding(0, 0, 0, 8) };
@@ -92,10 +111,18 @@ internal sealed class InventoryView : UserControl
 
         var dungeons = new RetroFrame("DUNGEONS", Color.FromArgb(232, 184, 0)) { Margin = new Padding(0, 0, 0, 8) };
         right.Controls.Add(dungeons, 0, 0);
+        var dungeonContent = CreateGrid(1, 3);
+        dungeonContent.RowStyles[0].SizeType = SizeType.Absolute;
+        dungeonContent.RowStyles[0].Height = 166;
+        dungeonContent.RowStyles[1].SizeType = SizeType.Absolute;
+        dungeonContent.RowStyles[1].Height = 30;
+        dungeonContent.RowStyles[2].SizeType = SizeType.Absolute;
+        dungeonContent.RowStyles[2].Height = 108;
+        dungeons.Controls.Add(dungeonContent);
         var dungeonLayout = CreateGrid(9, 4);
         dungeonLayout.RowStyles[0].SizeType = SizeType.Absolute;
         dungeonLayout.RowStyles[0].Height = 22;
-        dungeons.Controls.Add(dungeonLayout);
+        dungeonContent.Controls.Add(dungeonLayout, 0, 0);
         for (int level = 1; level <= 9; level++)
             dungeonLayout.Controls.Add(new Label
             {
@@ -106,6 +133,58 @@ internal sealed class InventoryView : UserControl
             for (int level = 1; level <= 9; level++)
                 AddDungeonTile(dungeonLayout, level, progress);
 
+        var questHeader = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill, Margin = Padding.Empty, WrapContents = false
+        };
+        questLabel = new Label
+        {
+            AutoSize = true, ForeColor = Color.White, Font = new Font("Consolas", 12, FontStyle.Bold),
+            Margin = new Padding(0, 2, 0, 0)
+        };
+        questToggle = new Button
+        {
+            Size = new Size(40, 24), Margin = new Padding(8, 0, 0, 0),
+            Padding = Padding.Empty, BackColor = Color.Black, ForeColor = Color.Yellow,
+            FlatStyle = FlatStyle.Flat, Font = new Font("Consolas", 10, FontStyle.Bold),
+            UseVisualStyleBackColor = false
+        };
+        questToggle.FlatAppearance.BorderColor = Color.Yellow;
+        questToggle.FlatAppearance.MouseOverBackColor = Color.FromArgb(48, 40, 0);
+        questToggle.FlatAppearance.MouseDownBackColor = Color.FromArgb(80, 64, 0);
+        questToggle.Click += (_, _) =>
+        {
+            secondQuest = !secondQuest;
+            UpdateDungeonRooms();
+        };
+        questHeader.Controls.Add(questLabel);
+        questHeader.Controls.Add(questToggle);
+        dungeonContent.Controls.Add(questHeader, 0, 1);
+        dungeonRooms = CreateGrid(9, 3);
+        foreach (RowStyle row in dungeonRooms.RowStyles)
+        {
+            row.SizeType = SizeType.Absolute;
+            row.Height = 36;
+        }
+        // Keep spare panel height in an empty row rather than stretching the last icon row.
+        dungeonRooms.RowCount = 4;
+        dungeonRooms.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        right.SizeChanged += (_, _) =>
+        {
+            // Match the pixel-art size instead of spreading room rows over the panel height.
+            int available = Math.Max(1, (right.ClientSize.Width - dungeons.Padding.Horizontal) / 9 - 4);
+            int iconSize = Math.Min(80, available >= 16 ? available / 16 * 16 : available);
+            foreach (RowStyle row in dungeonRooms.RowStyles)
+                if (row.SizeType == SizeType.Absolute)
+                    row.Height = iconSize + 4;
+            dungeonContent.RowStyles[0].Height = 22 + 3 * (iconSize + 16);
+            dungeonContent.RowStyles[2].Height = 3 * (iconSize + 4) + 6;
+            right.RowStyles[0].Height = dungeonContent.RowStyles.Cast<RowStyle>().Sum(row => row.Height)
+                + dungeons.Padding.Vertical + dungeons.Margin.Vertical;
+        };
+        dungeonContent.Controls.Add(dungeonRooms, 0, 2);
+        UpdateDungeonRooms();
+
         var equipment = new RetroFrame("EQUIPMENT", Color.FromArgb(232, 184, 0)) { Margin = Padding.Empty };
         right.Controls.Add(equipment, 0, 1);
         var equipmentLayout = CreateGrid(3, 2);
@@ -113,6 +192,68 @@ internal sealed class InventoryView : UserControl
         foreach (var (name, sprite) in EquipmentItems)
             AddItem(equipmentLayout, name, sprite);
 
+        RefreshProgress();
+    }
+
+    private void UpdateDungeonRooms()
+    {
+        questLabel.Text = secondQuest ? "Second Quest" : "First Quest";
+        questToggle.Text = secondQuest ? "Q1" : "Q2";
+        questToggle.AccessibleName = secondQuest ? "Switch to First Quest" : "Switch to Second Quest";
+        questToggle.AccessibleDescription = $"{questLabel.Text} room layout selected. Changes only the room display.";
+        toolTip.SetToolTip(questToggle, questToggle.AccessibleName);
+
+        dungeonRooms.SuspendLayout();
+        try
+        {
+            while (dungeonRooms.Controls.Count > 0)
+            {
+                var control = dungeonRooms.Controls[0];
+                tiles.RemoveAll(x => x.Tile == control);
+                toolTip.SetToolTip(control, null);
+                dungeonRooms.Controls.Remove(control);
+                control.Dispose();
+            }
+
+            var rooms = secondQuest ? SecondQuestRooms : FirstQuestRooms;
+            bool isSecondQuest = secondQuest;
+            for (int dungeon = 0; dungeon < rooms.Length; dungeon++)
+            {
+                int level = dungeon + 1;
+                int row = 0;
+                var (bossRooms, mobRooms, basements) = rooms[dungeon];
+                AddRooms("Boss Room", "BossBlock", bossRooms);
+                AddRooms("Mob Room", "RoomBlock", mobRooms);
+                AddRooms("Basement", "Basement", basements);
+
+                void AddRooms(string roomType, string sprite, int count)
+                {
+                    for (int index = 1; index <= count; index++)
+                    {
+                        int flag = 1 << row;
+                        TrackLocation? Find() => state.Locations.FirstOrDefault(x => x.Name == $"Level {level}"
+                            && x.Type.Equals("Dungeon", StringComparison.OrdinalIgnoreCase));
+                        var indicator = AddTile(dungeonRooms, $"Level {level} {roomType} {index}", sprite,
+                            () => Find() is { } location
+                                ? ((isSecondQuest ? location.SecondQuestRoomFlags : location.FirstQuestRoomFlags) & flag) != 0
+                                : null,
+                            () =>
+                            {
+                                var location = Find() ?? throw new InvalidOperationException($"Dungeon is not in this run: Level {level}");
+                                if (isSecondQuest)
+                                    location.SecondQuestRoomFlags ^= flag;
+                                else
+                                    location.FirstQuestRoomFlags ^= flag;
+                            }, () => $"{(isSecondQuest ? "Second Quest" : "First Quest")} room. Checked means looted; automatic loot detection is not connected.");
+                        dungeonRooms.SetCellPosition(indicator, new TableLayoutPanelCellPosition(dungeon, row++));
+                    }
+                }
+            }
+        }
+        finally
+        {
+            dungeonRooms.ResumeLayout();
+        }
         RefreshProgress();
     }
 
@@ -140,7 +281,7 @@ internal sealed class InventoryView : UserControl
                 : $"{tile.AccessibleName} - {(tile.Obtained ? "obtained / complete" : "not obtained / incomplete")}. "
                     + (tile == letterPotionTile
                         ? "Click or press Space/Enter to cycle: uncollected letter, letter, blue potion, red potion."
-                        : "Click or press Space to toggle.");
+                        : "Click or press Space/Enter to toggle.");
             string? note = notes?.Invoke();
             if (!string.IsNullOrWhiteSpace(note))
                 description += $"\n{note}";
@@ -308,10 +449,10 @@ internal sealed class RetroFrame : Panel
 
 internal sealed class ItemTile : Control
 {
+    private readonly bool interactive;
     private Image? image;
     private string itemName;
     private bool obtained;
-    private bool hovered;
 
     public bool Obtained
     {
@@ -331,20 +472,22 @@ internal sealed class ItemTile : Control
     private sealed class ItemTileAccessibleObject(ItemTile owner) : ControlAccessibleObject(owner)
     {
         public override AccessibleStates State => base.State
-            | (owner.Obtained ? AccessibleStates.Checked : AccessibleStates.None);
+            | (owner.interactive && owner.Obtained ? AccessibleStates.Checked : AccessibleStates.None);
     }
 
-    public ItemTile(Image? image, string itemName)
+    public ItemTile(Image? image, string itemName, bool interactive = true)
     {
+        this.interactive = interactive;
         this.image = image;
         this.itemName = itemName;
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-            ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
+            ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.Selectable, interactive);
         BackColor = Color.Black;
         ForeColor = Color.White;
-        Cursor = Cursors.Hand;
-        TabStop = true;
-        AccessibleRole = AccessibleRole.CheckButton;
+        Cursor = interactive ? Cursors.Hand : Cursors.Default;
+        TabStop = interactive;
+        AccessibleRole = interactive ? AccessibleRole.CheckButton : AccessibleRole.Graphic;
         Font = new Font("Consolas", 10, FontStyle.Bold);
     }
 
@@ -360,14 +503,6 @@ internal sealed class ItemTile : Control
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        if (hovered || Focused)
-        {
-            using var highlight = new SolidBrush(Color.FromArgb(25, 30, 25));
-            e.Graphics.FillRectangle(highlight, ClientRectangle);
-            using var border = new Pen(Color.FromArgb(100, 140, 100));
-            e.Graphics.DrawRectangle(border, 0, 0, Math.Max(0, Width - 1), Math.Max(0, Height - 1));
-        }
-
         int available = Math.Max(1, Math.Min(Width - 2, Height - 2));
         // Sprites are 16x16 pixel art exported at 10x; integer scaling keeps their edges crisp.
         int side = Math.Min(80, available >= 16 ? available / 16 * 16 : available);
@@ -377,7 +512,7 @@ internal sealed class ItemTile : Control
             e.Graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
             using var attributes = new ImageAttributes();
-            if (!Obtained || !Enabled)
+            if ((interactive && !Obtained) || !Enabled)
             {
                 var matrix = new ColorMatrix { Matrix00 = .3f, Matrix11 = .3f, Matrix22 = .3f };
                 attributes.SetColorMatrix(matrix);
@@ -390,19 +525,17 @@ internal sealed class ItemTile : Control
                 Obtained ? Color.White : Color.DimGray,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
         }
-        if (Focused) ControlPaint.DrawFocusRectangle(e.Graphics, new Rectangle(3, 3, Math.Max(0, Width - 7), Math.Max(0, Height - 7)));
+        if (interactive && Focused) ControlPaint.DrawFocusRectangle(e.Graphics, new Rectangle(3, 3, Math.Max(0, Width - 7), Math.Max(0, Height - 7)));
     }
 
-    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hovered = true; Invalidate(); }
-    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hovered = false; Invalidate(); }
     protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
     protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
-    protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) Focus(); base.OnMouseDown(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { if (interactive && e.Button == MouseButtons.Left) Focus(); base.OnMouseDown(e); }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.KeyCode is Keys.Space or Keys.Enter)
+        if (interactive && (e.KeyCode is Keys.Space or Keys.Enter))
         {
             OnClick(EventArgs.Empty);
             e.Handled = true;

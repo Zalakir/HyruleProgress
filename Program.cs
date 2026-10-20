@@ -95,6 +95,8 @@ public sealed class TrackLocation
     public bool Checked { get; set; }
     public bool HasMap { get; set; }
     public bool HasCompass { get; set; }
+    public int FirstQuestRoomFlags { get; set; }
+    public int SecondQuestRoomFlags { get; set; }
     public string Loot { get; set; } = "";
     public string Notes { get; set; } = "";
 }

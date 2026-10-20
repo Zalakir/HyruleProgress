@@ -26,7 +26,8 @@ internal static class TrackerStore
             ?? throw new JsonException("The saved run is null.");
         if (state.Items == null || state.Items.Any(x => x == null || string.IsNullOrWhiteSpace(x.Name))
             || state.Locations == null || state.Locations.Any(x => x == null
-                || string.IsNullOrWhiteSpace(x.Name) || string.IsNullOrWhiteSpace(x.Type))
+                || string.IsNullOrWhiteSpace(x.Name) || string.IsNullOrWhiteSpace(x.Type)
+                || x.FirstQuestRoomFlags is < 0 or > 7 || x.SecondQuestRoomFlags is < 0 or > 7)
             || !Enum.IsDefined(state.CurrentPotion) || state.RunElapsedTicks < 0
             || state.HeartUpgradeFlags < 0 || state.HeartUpgradeFlags >= 1 << (TrackerState.HeartContainerCount - 1))
             throw new JsonException("The saved run contains invalid inventory, location, or timer data.");
