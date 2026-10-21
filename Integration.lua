@@ -10,6 +10,8 @@ local frameCounter = 0
 local pickupSession = tostring(os.time()) .. "-" .. tostring({}):gsub("[^%w]", "")
 local roomPickups = {}
 local previousInventory = nil
+local lastCellarDiagnostic = "null"
+local lastCellarKey = nil
 
 local majorItemAddresses = {
     0x0657, 0x0659, 0x065A, 0x065B, 0x065C, 0x065F,
@@ -37,6 +39,36 @@ end
 local function readCpu(address)
     -- Bit 0x100 disables side effects in Mesen 2's CPU address space.
     return emu.read(address, emu.memType.nesMemory + 0x100)
+end
+
+local function captureCellarDiagnostic()
+    if readRam(0x0012) ~= 0x09 or readRam(0x0011) == 0 then
+        lastCellarKey = nil
+        return
+    end
+    local level = readRam(0x0010)
+    local slot = readRam(0x0016)
+    local room = readRam(0x00EB)
+    if level < 1 or level > 9 or slot > 2 or room > 0x7F then return end
+    local quest = readRam(0x062D + slot)
+    local key = string.format("%d-%d-%d-%d", slot, quest, level, room)
+    if key == lastCellarKey then return end
+    lastCellarKey = key
+
+    local cellars = {}
+    for index = 0, 9 do
+        local cellar = readCpu(0x6BB2 + index)
+        cellars[#cellars + 1] = string.format('{"room":%d,"layout":%d}',
+            cellar, cellar <= 0x7F and readCpu(0x69FE + cellar) % 64 or -1)
+    end
+    local flagsAddress = readCpu(0x6BAF) + 256 * readCpu(0x6BB0)
+    local flags = flagsAddress + room <= 0xFFFF and readCpu(flagsAddress + room) or -1
+    lastCellarDiagnostic = string.format(
+        '{"frame":%d,"level":%d,"quest":%d,"room":%d,"layout":%d,"item":%d,"flagsAddress":%d,"flags":%d,"cellars":[%s]}',
+        frameCounter, level, quest, room, readCpu(0x69FE + room) % 64,
+        readRam(0x00AB), flagsAddress, flags, table.concat(cellars, ",")
+    )
+    emu.log("Tracker cellar diagnostic: " .. lastCellarDiagnostic)
 end
 
 local function captureRoomPickup()
@@ -112,7 +144,12 @@ local function captureRoomPickup()
                 end
             end
         end
-        if not found or roomIndex > 2 then
+        if not found then
+            -- Some randomizers clear the cellar lookup table after entry. Let the app
+            -- resolve a confirmed item cellar only when the layout has one basement.
+            roomIndex = 0
+            emu.log("Tracker: item cellar lookup unavailable; using the layout only if it has one basement.")
+        elseif roomIndex > 2 then
             emu.log("Tracker: item cellar is outside the supported layout; mark the room manually.")
             return
         end
@@ -149,6 +186,7 @@ local function exportMemory()
 
     file:write("{")
     file:write('"protocolVersion":2,')
+    file:write('"scriptVersion":3,')
     file:write('"emulator":"Mesen",')
     file:write('"frame":' .. tostring(frameCounter) .. ",")
     file:write('"rom":' .. '"' ..
@@ -157,7 +195,8 @@ local function exportMemory()
     file:write('"ramStart":0,')
     file:write('"ramLength":2048,')
     file:write('"ramHex":"' .. table.concat(ram) .. '",')
-    file:write('"roomPickups":[' .. table.concat(roomPickups, ",") .. ']')
+    file:write('"roomPickups":[' .. table.concat(roomPickups, ",") .. '],')
+    file:write('"lastCellarDiagnostic":' .. lastCellarDiagnostic)
     file:write("}")
     file:close()
 
@@ -168,6 +207,7 @@ end
 
 emu.addEventCallback(function()
     frameCounter = frameCounter + 1
+    captureCellarDiagnostic()
     captureRoomPickup()
 
     -- Environ deux exports par seconde à 60 images/s

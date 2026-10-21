@@ -78,3 +78,10 @@ C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241
 C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\basement-output\HyruleProgress.runtimeconfig.json
 C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\basement-output\HyruleProgress.dll
 C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\basement-output\HyruleProgress.pdb
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\Resources\icon\HyruleProgress.ico
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\version.txt
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\HyruleProgress.exe
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\HyruleProgress.deps.json
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\HyruleProgress.runtimeconfig.json
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\HyruleProgress.dll
+C:\Users\Utilisateur\.copilot\session-state\a912bc71-ff24-4688-803d-2ffbb2bf1241\files\cellar-fix-build\HyruleProgress.pdb

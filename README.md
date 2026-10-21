@@ -43,6 +43,8 @@ To publish a standalone Windows build:
 The published executable will be under `bin/Release/net8.0-windows/win-x64/publish/`.
 
 ## Regression checks
+Run `dotnet run --project Tests\DungeonRoomChecks.csproj` to verify automatic basement detection, including the Level 3 First Quest case with a cleared cellar table, duplicate pickups, and ambiguous two-basement layouts. These checks mock Mesen's read-only API and do not access your actual save or bridge.
+
 Run `dotnet run --project Tests\HyruleProgress.Checks.csproj` on Windows with the .NET 8 SDK (or a newer compatible SDK).
 These dependency-free checks cover save validation and migration, failed-write preservation, timer transitions, gameplay filtering, consumables, heart and Bomb Bag upgrades, inventory layout, rendering, and checked-state accessibility. They use a temporary save directory, not your actual saved run.
 
@@ -67,6 +69,7 @@ Repeat steps 3-6 each time you restart Mesen. Your tracker progress is saved, so
 - **Indicator stays gray:** make sure the script is running (no error in the script window log) and that `%LOCALAPPDATA%\HyruleProgress\bridge.json` is being updated. Press **Win + R** and enter `%LOCALAPPDATA%\HyruleProgress` to open the folder.
 - **Indicator is green but nothing updates:** the tracker ignores the title and file-select screens; progress appears once you are playing a save file.
 - **Starting a new seed:** click **New run / reset** before playing, because auto-tracking preserves collected progress (only Food and the current potion follow consumption).
+- **Basement pickup not detected:** reload the current `Integration.lua` in Mesen. Script version 3 exports `lastCellarDiagnostic` in the bridge and logs the loaded cellar metadata on entry. When a randomizer clears the cellar lookup table, a confirmed item-cellar pickup can still check a layout's single basement. Layouts with two basements require a valid table to identify which one; the tracker logs the ambiguity instead of guessing. Updating the script does not replay an already-collected item.
 
 ### What is tracked
 The script writes a dump of the NES RAM to `%LOCALAPPDATA%\HyruleProgress\bridge.json` about twice per second. The tracker reads it and automatically marks:
