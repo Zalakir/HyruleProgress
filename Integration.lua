@@ -5,10 +5,13 @@ local outputPath =
     os.getenv("LOCALAPPDATA")
     .. "\\HyruleProgress\\bridge.json"
 local tempPath = outputPath .. ".tmp"
+local acknowledgementPath = outputPath .. ".ack"
 
 local frameCounter = 0
 local pickupSession = tostring(os.time()) .. "-" .. tostring({}):gsub("[^%w]", "")
 local roomPickups = {}
+local roomPickupIds = {}
+local lastAcknowledgedPickupId = nil
 local previousInventory = nil
 local lastCellarDiagnostic = "null"
 local lastCellarKey = nil
@@ -158,10 +161,39 @@ local function captureRoomPickup()
     end
 
     -- Retain events so slow polls and app restarts cannot lose the pickup's original location.
+    local pickupId = pickupSession .. "-" .. tostring(frameCounter)
+    roomPickupIds[#roomPickupIds + 1] = pickupId
     roomPickups[#roomPickups + 1] = string.format(
-        '{"Id":"%s-%d","Level":%d,"Quest":%d,"RoomType":%d,"RoomIndex":%d}',
-        pickupSession, frameCounter, level, quest, roomType, roomIndex
+        '{"Id":"%s","Level":%d,"Quest":%d,"RoomType":%d,"RoomIndex":%d}',
+        pickupId, level, quest, roomType, roomIndex
     )
+end
+
+local function acknowledgeRoomPickups()
+    local file = io.open(acknowledgementPath, "r")
+    if not file then return end
+    local pickupId = file:read("*a")
+    file:close()
+    if not pickupId or pickupId == "" or pickupId == lastAcknowledgedPickupId then return end
+    lastAcknowledgedPickupId = pickupId
+
+    local acknowledgedIndex = nil
+    for index, queuedId in ipairs(roomPickupIds) do
+        if queuedId == pickupId then
+            acknowledgedIndex = index
+            break
+        end
+    end
+    if not acknowledgedIndex then return end
+
+    local pendingPickups = {}
+    local pendingIds = {}
+    for index = acknowledgedIndex + 1, #roomPickups do
+        pendingPickups[#pendingPickups + 1] = roomPickups[index]
+        pendingIds[#pendingIds + 1] = roomPickupIds[index]
+    end
+    roomPickups = pendingPickups
+    roomPickupIds = pendingIds
 end
 
 local function exportMemory()
@@ -186,7 +218,7 @@ local function exportMemory()
 
     file:write("{")
     file:write('"protocolVersion":2,')
-    file:write('"scriptVersion":3,')
+    file:write('"scriptVersion":4,')
     file:write('"emulator":"Mesen",')
     file:write('"frame":' .. tostring(frameCounter) .. ",")
     file:write('"rom":' .. '"' ..
@@ -212,6 +244,7 @@ emu.addEventCallback(function()
 
     -- Environ deux exports par seconde à 60 images/s
     if frameCounter % 30 == 0 then
+        acknowledgeRoomPickups()
         exportMemory()
     end
 end, emu.eventType.endFrame)

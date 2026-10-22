@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace HyruleProgress;
 
@@ -11,6 +12,7 @@ internal static class MesenBridge
         "HyruleProgress", "bridge.json");
 
     public static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(3);
+    private static string? lastAcknowledgedPickupId;
 
     private const int CurrentLevel = 0x0010;
     private const int IsUpdatingMode = 0x0011;
@@ -70,6 +72,28 @@ internal static class MesenBridge
         {
             // The script rewrites the file twice a second; a partial read is retried on the next poll.
             return null;
+        }
+    }
+
+    public static bool AcknowledgeRoomPickups(string pickupId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pickupId);
+        if (pickupId == lastAcknowledgedPickupId) return true;
+
+        string acknowledgementPath = BridgePath + ".ack";
+        string temporaryPath = acknowledgementPath + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(acknowledgementPath)!);
+            File.WriteAllText(temporaryPath, pickupId);
+            File.Move(temporaryPath, acknowledgementPath, overwrite: true);
+            lastAcknowledgedPickupId = pickupId;
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Trace.TraceWarning($"Could not acknowledge room pickup {pickupId}: {ex.Message}");
+            return false;
         }
     }
 

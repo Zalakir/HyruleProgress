@@ -116,6 +116,7 @@ public sealed class TrackerForm : Form
     private readonly System.Windows.Forms.Timer bridgeTimer = new() { Interval = 500 };
     private Label bridgeStatus = null!;
     private bool saveBlocked;
+    private bool savePending;
 
     public TrackerForm()
     {
@@ -178,16 +179,20 @@ public sealed class TrackerForm : Form
         }
     }
 
-    private void SaveState()
+    private bool SaveState()
     {
-        if (saveBlocked) return;
+        if (saveBlocked) return false;
         try
         {
             TrackerStore.Save(savePath, state);
+            savePending = false;
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
+            savePending = true;
             MessageBox.Show(this, "Save failed: " + ex.Message, "Save error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
         }
     }
 
@@ -255,12 +260,16 @@ public sealed class TrackerForm : Form
             state.RoomPickupBaselinePending = false;
             progressChanged = true;
         }
-        if (timerChanged || progressChanged)
+        bool changed = timerChanged || progressChanged;
+        bool stateSaved = !saveBlocked && !savePending;
+        if (changed)
         {
             if (timerChanged) UpdateTimerDisplay();
             if (progressChanged) inventory.RefreshProgress();
-            SaveState();
+            stateSaved = SaveState();
         }
+        if (stateSaved && roomPickups.Count > 0)
+            MesenBridge.AcknowledgeRoomPickups(roomPickups[^1].Id);
     }
 
     private void SetBridgeStatus(bool connected)
